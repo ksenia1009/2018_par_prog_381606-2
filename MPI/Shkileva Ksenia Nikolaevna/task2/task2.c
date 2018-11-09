@@ -160,9 +160,22 @@ int main (int argc, char **argv)
             std::cout << resultSeq[i] << "\t";
         }
         std::cout << std::endl;
-
-		std::cout << "Time (parallel algorithm): " << end_time - start_time << std::endl;
-		std::cout << "Time (sequential algorithm): " << end_time_seq - start_time_seq << std::endl;
+		
+	// Проверка идентичности результатов параллельного и последовательного алгоритмов
+	int flag = 1;
+	for (int i = 0; i < lines; i++)
+		if (result[i] != resultSeq[i])
+		{
+			flag = 0;
+			break;
+		}
+	if (flag == 1)
+		std::cout << "Results are equal" << std::endl;
+	else
+		std::cout << "Results are different" << std::endl;
+		
+	std::cout << "Time (parallel algorithm): " << end_time - start_time << std::endl;
+	std::cout << "Time (sequential algorithm): " << end_time_seq - start_time_seq << std::endl;
 	}
 
 	MPI_Finalize();	
