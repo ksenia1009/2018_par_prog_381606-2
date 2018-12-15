@@ -204,7 +204,7 @@ int main (int argc, char **argv)
 	int* sendInd; // Индекс первого среди них
 	int* recNum; // Количество элементов, которые будет отправлять данный процесс
 	int* recInd; // Индекс первого среди них
-	double eps = 0.0001; // Погрешность вычислений
+	double eps = atof(argv[2]); // Погрешность вычислений
 	double* procRows; // Строки, выделенные данному процессу
 	int rowNum; // Количество этих строк
 	double* prevCurResult; // Предыдущее приближение
@@ -265,11 +265,12 @@ int main (int argc, char **argv)
 
 	int flag = 0;
 	double sum; //Суммарная погрешность
+	double tmp1, tmp2;
 
 	start_time = MPI_Wtime();
 
 	// Метод сопряженных градиентов (параллельная версия)
-	while(flag < size)
+	do
 	{
 		sum = 0;
 		//-------------------- Шаг 1 --------------------//
@@ -283,6 +284,7 @@ int main (int argc, char **argv)
 		Scalar(prevGrad, prevGrad, parts[1], size, rowNum); // Скалярное произведение предыдущих значений градиентов (2)
 		DoubleVectorComposition((double)(parts[0] / parts[1]), prevDirect, tmpVec, size, rowNum); // Произведение частности (1) и (2) и предыдущего здачения вектора направления (3)
 		VectorVectorDifference(tmpVec, grad, direct, size, rowNum); // Разность (3) и текущего значения градиента
+		Scalar(grad, grad, tmp1, size, rowNum);
 		//-------------------- Шаг 3 --------------------//
 		double above; // Числитель дроби
 		double* Dtmp = new double[size];
@@ -298,6 +300,7 @@ int main (int argc, char **argv)
 
 		for(int i = 0; i < rowNum; i++)
 			sum += fabs(curResult[i] - prevCurResult[i]);
+		MPI_Bcast(&flag, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		delete prevGrad; delete prevDirect; delete prevCurResult;
 		delete[] prevCurResultTmp; delete[] parts; delete[] Dtmp;
 		prevGrad = grad; 
@@ -308,7 +311,8 @@ int main (int argc, char **argv)
 		curResult = new double[rowNum]; 
 		flag++;
 		iterCount++;
-	}
+		Scalar(vector, vector, tmp2, size, rowNum);
+	} while(/*(flag < size) && */((tmp1 / tmp2) > (eps * eps)));
 	MPI_Gatherv(prevCurResult, rowNum, MPI_DOUBLE, result, recNum, recInd, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	end_time = MPI_Wtime();
 
@@ -316,6 +320,7 @@ int main (int argc, char **argv)
 	if(ProcRank == 0)
 	{
 		std::cout << "Size: " << size << std::endl;
+		std::cout << "Eps: " << eps << std::endl;
 		std::cout << "Method Sopr Grad result (parallel): " << std::endl;
 		for(int i = 0; i < size; i++)
 			std::cout << result[i] << " ";
